@@ -1,0 +1,15 @@
+{
+  "name": "o2o-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Gộp chung Admin Server + Admin Web (mới) với Client Server + Client Web (repo Touch-app có sẵn của bạn) để chạy npm run dev 1 lệnh duy nhất.",
+  "scripts": {
+    "dev": "concurrently -n ADMIN-BE,ADMIN-FE,CLIENT-BE,CLIENT-FE -c blue,cyan,magenta,green \"npm run dev --prefix admin-server\" \"npm run dev --prefix admin-web\" \"npm run dev --prefix client-server\" \"npm run dev --prefix client-web\"",
+    "dev:admin": "concurrently -n ADMIN-BE,ADMIN-FE -c blue,cyan \"npm run dev --prefix admin-server\" \"npm run dev --prefix admin-web\"",
+    "dev:client": "concurrently -n CLIENT-BE,CLIENT-FE -c magenta,green \"npm run dev --prefix client-server\" \"npm run dev --prefix client-web\"",
+    "install:all": "npm install --prefix admin-server && npm install --prefix admin-web && npm install --prefix client-server && npm install --prefix client-web"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

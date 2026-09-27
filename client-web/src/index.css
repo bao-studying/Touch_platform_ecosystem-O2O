@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ẩn thanh cuộn ngang cho khu vực marquee mà vẫn cuộn được */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-orbit,
+  .animate-bounce-soft,
+  .animate-fab-pulse {
+    animation: none !important;
+  }
+}
+
+/* Nền có kết cấu nhẹ + viền màu ấm mờ ở góc — dùng thay cho nền phẳng bg-cream-100/50
+   để giao diện đỡ "trơ", vẫn giữ độ tương phản tốt cho nội dung bên trên.
+   Điểm chấm nhỏ (dot-grid) gợi cảm giác giấy/kết cấu, các quầng màu ở góc lấy tông
+   hổ phách (amber) và xanh trà (sage) đồng bộ với bảng màu thương hiệu cà phê. */
+.bg-app-surface {
+  background-color: #f5ebda; /* cream-100 */
+  background-image: radial-gradient(circle at 6% 4%, rgba(212, 162, 76, 0.16) 0%, transparent 40%),
+    radial-gradient(circle at 96% 98%, rgba(143, 163, 130, 0.14) 0%, transparent 42%),
+    radial-gradient(rgba(59, 35, 24, 0.05) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
+}
+
+.bg-app-surface-soft {
+  background-color: #fbf6ee; /* cream-50 */
+  background-image: radial-gradient(circle at 10% 6%, rgba(212, 162, 76, 0.14) 0%, transparent 38%),
+    radial-gradient(circle at 92% 94%, rgba(143, 163, 130, 0.12) 0%, transparent 40%),
+    radial-gradient(rgba(59, 35, 24, 0.045) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
+}
+
+/* Viền gradient mảnh, ấm áp — dùng cho mép trên/dưới các thanh điều hướng để trông
+   "có điểm nhấn" hơn là một đường kẻ xám đơn thuần.
+   LƯU Ý QUAN TRỌNG: KHÔNG set position ở đây. Class này luôn được gắn lên phần tử đã tự có
+   position (fixed/md:fixed/sticky) như thanh nav dưới hay sidebar desktop. Nếu set thêm
+   "position: relative" tại đây, vì quy tắc CSS cascade (rule nào đứng SAU trong file thắng khi
+   cùng độ đặc hiệu — bất kể thứ tự class trong className), nó sẽ ÂM THẦM GHI ĐÈ "position: fixed"
+   thành "relative", khiến nav KHÔNG còn dính cố định vào màn hình nữa — đây chính là nguyên nhân
+   khiến thanh nav "trôi lung tung"/mất khi cuộn. ::before vẫn định vị đúng bình thường vì
+   position:fixed/sticky trên phần tử cha cũng đã tự tạo containing block rồi, không cần thêm gì. */
+.edge-accent-top::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(212, 162, 76, 0.55), rgba(184, 86, 47, 0.4), transparent);
+}
+
+/* ===== "Liquid Glass" — kính mờ trong suốt kiểu Apple (iOS 18) =====
+   Đặc trưng: nền bán trong suốt để lộ mờ những gì phía sau + backdrop-filter blur/saturate làm
+   mờ & rực màu hậu cảnh + 1 viền sáng mảnh phía trên/toàn viền mô phỏng ánh sáng khúc xạ qua mép
+   kính thật, tạo cảm giác có ĐỘ DÀY thay vì chỉ là 1 lớp overlay phẳng. Dùng cho các bề mặt NỔI
+   trên nội dung khác (nav, popup, card nổi bật) — không dùng cho nền trang chính (sẽ làm chữ khó đọc). */
+
+/* Panel nổi có bo góc (popup, modal, thẻ nổi bật) — viền trong suốt đủ 4 cạnh */
+.glass-panel {
+  background: rgba(251, 246, 238, 0.72);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 8px 32px rgba(42, 24, 16, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+/* Thanh dính mép màn hình (bottom nav, sticky header) — chỉ cần điểm sáng mép trên, không viền quanh */
+.glass-bar {
+  background: rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* Card nổi trên nền có texture (bg-app-surface) — nhẹ hơn glass-panel, vẫn giữ được độ tương phản
+   tốt cho chữ vì chỉ dùng ở khối nhỏ (thẻ số liệu), không phải khối văn bản dài. */
+.glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 18px rgba(42, 24, 16, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Trình duyệt cũ không hỗ trợ backdrop-filter: fallback về nền gần như đặc để không bị "xuyên thấu" xấu */
+  .glass-panel {
+    background: rgba(251, 246, 238, 0.96);
+  }
+  .glass-bar {
+    background: rgba(255, 255, 255, 0.96);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.92);
+  }
+}
+

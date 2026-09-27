@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Quill (react-quill-new) chỉ hỗ trợ theme sáng mặc định ("snow") — override tối cho khu Super Admin (Cms.jsx) */
+.dash-quill .ql-toolbar {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.dash-quill .ql-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff;
+}
+.dash-quill .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.3);
+}
+.dash-quill .ql-stroke {
+  stroke: rgba(255, 255, 255, 0.5);
+}
+.dash-quill .ql-fill {
+  fill: rgba(255, 255, 255, 0.5);
+}
+.dash-quill .ql-picker-label {
+  color: rgba(255, 255, 255, 0.5);
+}
+.dash-quill .ql-picker-options {
+  background: #171717;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.dash-quill button:hover .ql-stroke,
+.dash-quill .ql-picker-label:hover {
+  stroke: #fb923c;
+  color: #fb923c;
+}
