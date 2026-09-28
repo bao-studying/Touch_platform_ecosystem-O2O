@@ -55,6 +55,7 @@ export default {
       boxShadow: {
         "glow-blue": "0 0 0 4px rgba(37,99,235,0.12), 0 8px 24px -8px rgba(37,99,235,0.35)",
         "glow-white": "0 0 0 1px rgba(255,255,255,0.08)",
+        "glow-orange": "0 20px 60px -12px rgba(255,80,40,0.45)",
       },
       keyframes: {
         marquee: {
@@ -73,12 +74,32 @@ export default {
           "0%, 100%": { boxShadow: "0 0 0 0 rgba(74,46,31,0.35)" },
           "50%": { boxShadow: "0 0 0 14px rgba(74,46,31,0)" },
         },
+        fadeIn: {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(-6px)" },
+          "50%": { transform: "translateY(8px)" },
+        },
+        ripple: {
+          "0%": { transform: "scale(0.55)", opacity: "0.55" },
+          "100%": { transform: "scale(1.9)", opacity: "0" },
+        },
+        spinSlow: {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         marquee: "marquee 9s linear infinite",
         orbit: "orbit 7s linear infinite",
         "bounce-soft": "bounceSoft 1.6s ease-in-out infinite",
         "fab-pulse": "fabPulse 2s ease-out infinite",
+        "fade-in": "fadeIn 0.5s cubic-bezier(0.16,1,0.3,1)",
+        float: "float 7s ease-in-out infinite",
+        ripple: "ripple 2.8s ease-out infinite",
+        "spin-slow": "spinSlow 6s linear infinite",
       },
     },
   },

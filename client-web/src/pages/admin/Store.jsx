@@ -4,6 +4,7 @@ import api from "../../api/axios";
 import adminServerApi from "../../lib/adminServerAxios";
 import { adminServerSocket } from "../../lib/socket";
 import { useBusiness } from "../../context/BusinessContext";
+import { useToast } from "../../context/ToastContext";
 import { diffUnlockedFeatures } from "../../utils/planLimits";
 import UnlockToast from "../../components/admin/UnlockToast";
 import PaymentModal from "../../components/admin/PaymentModal";
@@ -25,6 +26,7 @@ const formatVnd = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
 
 export default function Store() {
   const { business, updateBusinessLocal, refreshBusiness } = useBusiness();
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [unlocked, setUnlocked] = useState(null);
   const [payingPlan, setPayingPlan] = useState(null); // plan id đang mở PaymentModal, null = đóng
@@ -37,6 +39,9 @@ export default function Store() {
   const [plansError, setPlansError] = useState(false);
   const [hardware, setHardware] = useState(null);
   const [hardwareError, setHardwareError] = useState(false);
+  // Nháy nhẹ viền bảng giá vài giây khi vừa nhận cập nhật real-time — để tenant NHÌN THẤY được
+  // rằng giá vừa đổi theo Admin Server, chứ không chỉ âm thầm đổi số mà không ai để ý.
+  const [justSynced, setJustSynced] = useState(false);
 
   const loadPlans = () => {
     setPlansError(false);
@@ -54,17 +59,33 @@ export default function Store() {
       .catch(() => setHardwareError(true));
   };
 
+  const flashSynced = () => {
+    setJustSynced(true);
+    setTimeout(() => setJustSynced(false), 2400);
+  };
+
   useEffect(() => {
     loadPlans();
     loadHardware();
     // Super Admin đổi giá/sản phẩm trong lúc tenant đang mở trang Store → tự cập nhật ngay,
-    // không cần tải lại trang.
-    adminServerSocket.on("plan:updated", loadPlans);
-    adminServerSocket.on("hardware:updated", loadHardware);
-    return () => {
-      adminServerSocket.off("plan:updated", loadPlans);
-      adminServerSocket.off("hardware:updated", loadHardware);
+    // không cần tải lại trang. Luôn gọi lại API (không tin trực tiếp payload socket) để đảm bảo
+    // số hiển thị khớp 100% với DB tại thời điểm nhận sự kiện.
+    const handlePlanUpdated = () => {
+      loadPlans();
+      flashSynced();
+      showToast("Bảng giá gói dịch vụ vừa được Admin cập nhật.", "info");
     };
+    const handleHardwareUpdated = () => {
+      loadHardware();
+      flashSynced();
+    };
+    adminServerSocket.on("plan:updated", handlePlanUpdated);
+    adminServerSocket.on("hardware:updated", handleHardwareUpdated);
+    return () => {
+      adminServerSocket.off("plan:updated", handlePlanUpdated);
+      adminServerSocket.off("hardware:updated", handleHardwareUpdated);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelectPlan = async (planKey) => {
@@ -99,6 +120,15 @@ export default function Store() {
       <div>
         <h1 className="font-display text-2xl text-espresso-950">Gói dịch vụ</h1>
         <p className="text-sm text-espresso-700/60">Nâng cấp để mở khóa Smart Review, CRM và quản lý đa chi nhánh.</p>
+        {!plansError && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-sage-500" />
+            </span>
+            <span className="text-[11px] text-sage-600 font-medium">Giá đồng bộ trực tiếp với Admin Server</span>
+          </div>
+        )}
       </div>
 
       {plansError && (
@@ -119,10 +149,14 @@ export default function Store() {
           ))}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+          className={`grid sm:grid-cols-2 lg:grid-cols-4 gap-4 rounded-[28px] transition-shadow duration-700 ${
+            justSynced ? "ring-2 ring-amber-400/60 ring-offset-4 ring-offset-cream-50" : "ring-0 ring-transparent"
+          }`}
+        >
           {(plans || []).map((plan) => {
             const active = business?.plan === plan.planKey;
-            const priceDisplay = plan.priceVnd === 0 ? "0đ" : plan.priceLabel || formatVnd(plan.priceVnd);
+            const priceDisplay = plan.priceVnd === 0 ? "0đ" : `${formatVnd(plan.priceVnd)}/tháng`;
             return (
               <div
                 key={plan.planKey}

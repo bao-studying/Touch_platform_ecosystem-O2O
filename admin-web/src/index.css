@@ -11,3 +11,101 @@ body,
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Quill (react-quill-new) chỉ hỗ trợ theme sáng mặc định ("snow") — override tối cho khu Super Admin (Cms.jsx) */
+.dash-quill .ql-toolbar {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.dash-quill .ql-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff;
+}
+.dash-quill .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.3);
+}
+.dash-quill .ql-stroke {
+  stroke: rgba(255, 255, 255, 0.5);
+}
+.dash-quill .ql-fill {
+  fill: rgba(255, 255, 255, 0.5);
+}
+.dash-quill .ql-picker-label {
+  color: rgba(255, 255, 255, 0.5);
+}
+.dash-quill .ql-picker-options {
+  background: #171717;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.dash-quill button:hover .ql-stroke,
+.dash-quill .ql-picker-label:hover {
+  stroke: #fb923c;
+  color: #fb923c;
+}
+
+/* ===== Public site / Auth (đồng bộ với client-web) ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-marquee,
+  .animate-orbit,
+  .animate-bounce-soft,
+  .animate-fab-pulse,
+  .animate-float,
+  .animate-ripple,
+  .animate-spin-slow {
+    animation: none !important;
+  }
+}
+
+/* Nền tối cho trang Auth — GIỐNG HỆT client-web để 2 web dùng chung 1 giao diện đăng nhập/đăng ký */
+.bg-auth-surface {
+  background-color: #2a1810;
+  background-image: radial-gradient(circle at 10% 8%, rgba(212, 162, 76, 0.14) 0%, transparent 40%),
+    radial-gradient(circle at 90% 94%, rgba(143, 163, 130, 0.1) 0%, transparent 42%),
+    radial-gradient(rgba(251, 246, 238, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}
+
+.bg-auth-surface-panel {
+  background: radial-gradient(circle at 75% 15%, rgba(212, 162, 76, 0.2) 0%, transparent 46%),
+    radial-gradient(circle at 15% 88%, rgba(184, 86, 47, 0.16) 0%, transparent 50%),
+    linear-gradient(160deg, #3b2318 0%, #2a1810 55%, #1c110b 100%);
+}
+
+/* Ánh sáng đi theo con trỏ trên thẻ (gói giá, thẻ use-case...). --mx/--my được set bằng JS ở TiltCard/Spotlight. */
+.spotlight {
+  position: relative;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%), var(--spot, rgba(212, 162, 76, 0.2)), transparent 62%);
+}
+.spotlight:hover::before {
+  opacity: 1;
+}
+
+/* Nền chấm bi mảnh + quầng sáng, dùng cho các khối sáng trên trang công khai */
+.bg-paper-dots {
+  background-image: radial-gradient(rgba(59, 35, 24, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.bg-stage-dark {
+  background-color: #2a1810;
+  background-image: radial-gradient(circle at 80% 10%, rgba(212, 162, 76, 0.16) 0%, transparent 45%),
+    radial-gradient(circle at 10% 90%, rgba(184, 86, 47, 0.14) 0%, transparent 50%),
+    radial-gradient(rgba(251, 246, 238, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}

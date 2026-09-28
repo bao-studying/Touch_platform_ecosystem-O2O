@@ -102,6 +102,25 @@ body,
   box-shadow: 0 4px 18px rgba(42, 24, 16, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
+/* Nền tối "hero" riêng cho các trang Auth (Login/Register/Onboarding) — tách biệt khỏi nền sáng
+   cream dùng cho phần còn lại của app, để tạo cảm giác cao cấp/chuyên nghiệp hơn ngay từ lần chạm
+   đầu tiên. Cùng logic quầng sáng góc + lưới chấm như .bg-app-surface nhưng đảo tông sang tối. */
+.bg-auth-surface {
+  background-color: #2a1810; /* espresso-950 */
+  background-image: radial-gradient(circle at 10% 8%, rgba(212, 162, 76, 0.14) 0%, transparent 40%),
+    radial-gradient(circle at 90% 94%, rgba(143, 163, 130, 0.1) 0%, transparent 42%),
+    radial-gradient(rgba(251, 246, 238, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}
+
+/* Panel trang trí bên phải của trang Auth (chỉ desktop) — đậm và có chiều sâu hơn nền form bên
+   trái để tách lớp thị giác rõ ràng, giống bố cục ảnh tham khảo (panel ảnh/minh hoạ bên phải). */
+.bg-auth-surface-panel {
+  background: radial-gradient(circle at 75% 15%, rgba(212, 162, 76, 0.2) 0%, transparent 46%),
+    radial-gradient(circle at 15% 88%, rgba(184, 86, 47, 0.16) 0%, transparent 50%),
+    linear-gradient(160deg, #3b2318 0%, #2a1810 55%, #1c110b 100%);
+}
+
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   /* Trình duyệt cũ không hỗ trợ backdrop-filter: fallback về nền gần như đặc để không bị "xuyên thấu" xấu */
   .glass-panel {

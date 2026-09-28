@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
-import { Save, Check } from "lucide-react";
+import { Save, Check, Loader2 } from "lucide-react";
 import superAdminApi from "../../api/superAdminAxios";
+import { useToast } from "../../components/superadmin/Toast";
 
 const SECTIONS = [
   { key: "hero", label: "Trang chủ — Hero", hasCta: true },
@@ -16,6 +17,8 @@ const QUILL_MODULES = {
 };
 
 export default function Cms() {
+  const toast = useToast();
+  const [justSaved, setJustSaved] = useState(false);
   const [content, setContent] = useState({});
   const [active, setActive] = useState(SECTIONS[0].key);
   const [saving, setSaving] = useState(false);
@@ -37,6 +40,11 @@ export default function Cms() {
       const res = await superAdminApi.put(`/super-admin/cms/${active}`, activeData);
       setContent((c) => ({ ...c, [active]: res.data }));
       setSavedAt(new Date());
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2200);
+      toast.success("Đã lưu nội dung", `Mục "${SECTIONS.find((x) => x.key === active)?.label}" đã hiển thị trên trang công khai.`);
+    } catch (err) {
+      toast.error("Lưu nội dung thất bại", err.response?.data?.message || "Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -46,8 +54,8 @@ export default function Cms() {
 
   return (
     <div className="p-5 md:p-8 max-w-4xl pb-28">
-      <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Nội dung trang chủ (CMS)</h1>
-      <p className="text-sm text-slate-500 mt-1">Chỉnh nội dung hiển thị trên SaaS Landing Page công khai — thay đổi có hiệu lực ngay khi lưu.</p>
+      <h1 className="text-2xl font-semibold text-white tracking-tight">Nội dung trang chủ (CMS)</h1>
+      <p className="text-sm text-neutral-500 mt-1">Chỉnh nội dung hiển thị trên SaaS Landing Page công khai — thay đổi có hiệu lực ngay khi lưu.</p>
 
       <div className="mt-5 flex gap-2 flex-wrap">
         {SECTIONS.map((s) => (
@@ -56,8 +64,8 @@ export default function Cms() {
             onClick={() => setActive(s.key)}
             className={`text-sm font-medium px-4 py-2 rounded-full transition-colors ${
               active === s.key
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/30"
-                : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300"
+                ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-sm shadow-orange-500/30"
+                : "bg-neutral-900 text-neutral-400 border border-white/10 hover:border-white/20"
             }`}
           >
             {s.label}
@@ -65,16 +73,16 @@ export default function Cms() {
         ))}
       </div>
 
-      <div className="mt-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
-        <label className="text-xs font-medium text-slate-500">Tiêu đề</label>
+      <div className="mt-5 bg-neutral-900 border border-white/5 rounded-3xl p-5">
+        <label className="text-xs font-medium text-neutral-500">Tiêu đề</label>
         <input
           value={activeData.title || ""}
           onChange={(e) => setField("title", e.target.value)}
-          className="w-full mt-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          className="w-full mt-1.5 rounded-lg border border-white/10 bg-white/5 text-white placeholder:text-neutral-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
         />
 
-        <label className="text-xs font-medium text-slate-500 mt-4 block">Nội dung</label>
-        <div className="mt-1.5">
+        <label className="text-xs font-medium text-neutral-500 mt-4 block">Nội dung</label>
+        <div className="mt-1.5 dash-quill">
           <ReactQuill
             theme="snow"
             value={activeData.bodyHtml || ""}
@@ -87,19 +95,19 @@ export default function Cms() {
         {sectionMeta?.hasCta && (
           <div className="grid sm:grid-cols-2 gap-3 mt-4">
             <div>
-              <label className="text-xs font-medium text-slate-500">Nhãn nút CTA</label>
+              <label className="text-xs font-medium text-neutral-500">Nhãn nút CTA</label>
               <input
                 value={activeData.ctaLabel || ""}
                 onChange={(e) => setField("ctaLabel", e.target.value)}
-                className="w-full mt-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full mt-1.5 rounded-lg border border-white/10 bg-white/5 text-white placeholder:text-neutral-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-500">Liên kết CTA</label>
+              <label className="text-xs font-medium text-neutral-500">Liên kết CTA</label>
               <input
                 value={activeData.ctaLink || ""}
                 onChange={(e) => setField("ctaLink", e.target.value)}
-                className="w-full mt-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full mt-1.5 rounded-lg border border-white/10 bg-white/5 text-white placeholder:text-neutral-600 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
               />
             </div>
           </div>
@@ -108,17 +116,17 @@ export default function Cms() {
 
       {/* Sticky floating save bar */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-[calc(50%+8rem)] z-30">
-        <div className="flex items-center gap-3 bg-slate-900 text-white rounded-full pl-5 pr-2 py-2 shadow-lg shadow-slate-900/20">
-          <span className="text-xs text-slate-300">
+        <div className="flex items-center gap-3 bg-white text-neutral-900 rounded-full pl-5 pr-2 py-2 shadow-2xl shadow-black/50">
+          <span className="text-xs text-neutral-500">
             {savedAt ? `Đã lưu lúc ${savedAt.toLocaleTimeString("vi-VN")}` : "Có thay đổi chưa lưu"}
           </span>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 rounded-full text-sm font-medium disabled:opacity-60"
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium text-white active:scale-[0.96] transition-all disabled:opacity-70 disabled:cursor-wait ${justSaved ? "bg-emerald-500" : "bg-gradient-to-r from-orange-500 to-red-600"}`}
           >
-            {saving ? <Save size={14} className="animate-pulse" /> : savedAt ? <Check size={14} /> : <Save size={14} />}
-            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            {saving ? <Loader2 size={14} className="animate-spin" /> : justSaved ? <Check size={14} strokeWidth={3} /> : <Save size={14} />}
+            {saving ? "Đang lưu..." : justSaved ? "Đã lưu" : "Lưu thay đổi"}
           </button>
         </div>
       </div>

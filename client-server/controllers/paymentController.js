@@ -48,6 +48,7 @@ const createOrder = async (req, res) => {
       });
     }
     const amount = livePrices[plan];
+    console.log(`[paymentController] Tạo đơn nâng cấp ${plan}: giá lấy từ Admin Server = ${amount}đ`);
     if (!amount) return res.status(400).json({ message: "Gói không hợp lệ để thanh toán" });
 
     const business = await Business.findById(businessId);

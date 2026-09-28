@@ -23,18 +23,23 @@ export const timeAgo = (dateInput) => {
   return date.toLocaleDateString("vi-VN");
 };
 
+// Tông màu cho theme tối (nền neutral-900 card) — dùng darkBg/darkTone ở dropdown thông báo & feed hoạt động.
 export const ACTIVITY_META = {
-  signup: { icon: UserPlus, tone: "text-blue-600", bg: "bg-blue-50" },
-  order: { icon: ShoppingBag, tone: "text-violet-600", bg: "bg-violet-50" },
-  ticket: { icon: LifeBuoy, tone: "text-amber-600", bg: "bg-amber-50" },
+  signup: { icon: UserPlus, darkBg: "bg-blue-500/15", darkTone: "text-blue-400" },
+  order: { icon: ShoppingBag, darkBg: "bg-violet-500/15", darkTone: "text-violet-400" },
+  ticket: { icon: LifeBuoy, darkBg: "bg-amber-500/15", darkTone: "text-amber-400" },
 };
 
+// Badge gói — pill translucent trên nền tối, khớp tông cam/vàng chủ đạo của thiết kế FinPoint.
 export const PLAN_BADGE = {
-  free: { label: "Free", className: "bg-slate-100 text-slate-600 ring-1 ring-slate-200" },
-  level1: { label: "Level 1", className: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
-  level2: { label: "Level 2", className: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" },
+  free: { label: "Free", className: "bg-white/8 text-neutral-300 ring-1 ring-white/10" },
+  level1: { label: "Level 1", className: "bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/20" },
+  level2: { label: "Level 2", className: "bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/20" },
   level3: {
     label: "Enterprise",
-    className: "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-sm shadow-indigo-500/30",
+    className: "bg-gradient-to-r from-amber-400 to-orange-500 text-neutral-900 font-semibold",
   },
 };
+
+// Màu đặc trưng theo gói — dùng cho bar chart / donut / dải màu nhỏ ở KPI card.
+export const PLAN_COLORS = { free: "#525252", level1: "#3B82F6", level2: "#8B5CF6", level3: "#F59E0B" };

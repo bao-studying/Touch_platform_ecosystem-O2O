@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Palette, ImagePlus } from "lucide-react";
+import { Palette, ImagePlus, CheckCircle2 } from "lucide-react";
 import api from "../../api/axios";
 import SmartReview from "../../components/public/SmartReview";
 import SocialLinks from "../../components/public/SocialLinks";
@@ -26,6 +26,7 @@ export default function LandingPage({ previewData = null, editHandlers = null })
   const [loading, setLoading] = useState(!previewData);
   const [error, setError] = useState("");
   const [scrollY, setScrollY] = useState(0);
+  const [bioExpanded, setBioExpanded] = useState(false);
   const editMode = !!editHandlers;
 
   useEffect(() => {
@@ -147,12 +148,43 @@ export default function LandingPage({ previewData = null, editHandlers = null })
         {/* Thanh kéo — luôn hiển thị, nhuốm màu thương hiệu nhẹ để thấy ngay khi đổi Theme */}
         <div className="mx-auto mb-5 h-1.5 w-10 rounded-full" style={{ backgroundColor: "var(--brand)", opacity: 0.25 }} />
 
-        <div className="relative">
+        <div className="relative animate-fade-in">
           {editMode && <EditBadge onClick={editHandlers.onEditBio} className="absolute -top-1 right-0" label="Bio" />}
-          <h1 style={{ fontFamily: brandFont }} className="text-2xl text-espresso-950 text-center mb-1">
-            {business.name}
-          </h1>
-          {business.bio && <p className="text-center text-sm text-espresso-700/70 mb-6 leading-relaxed">{business.bio}</p>}
+
+          <div className="flex flex-col items-center">
+            {/* Gạch nhấn ngắn nhuốm màu thương hiệu — thay cho việc bắt đầu thẳng bằng tiêu đề,
+                tạo một điểm dừng thị giác nhỏ trước khi vào tên thương hiệu, đỡ "trơ". */}
+            <span className="h-[3px] w-8 rounded-full mb-3.5" style={{ backgroundColor: "var(--brand)", opacity: 0.7 }} />
+            <h1 style={{ fontFamily: brandFont }} className="text-2xl text-espresso-950 text-center mb-1.5">
+              {business.name}
+            </h1>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-espresso-700/45 mb-5">
+              <CheckCircle2 size={13} style={{ color: "var(--brand)" }} />
+              Trang thương hiệu chính thức
+            </span>
+          </div>
+
+          {business.bio && (
+            <div className="max-w-md mx-auto mb-6">
+              <p
+                className={`text-center text-sm text-espresso-700/70 leading-relaxed ${
+                  !bioExpanded && business.bio.length > 120 ? "line-clamp-2" : ""
+                }`}
+              >
+                {business.bio}
+              </p>
+              {business.bio.length > 120 && (
+                <button
+                  type="button"
+                  onClick={() => setBioExpanded((v) => !v)}
+                  className="block mx-auto mt-1.5 text-xs font-semibold hover:opacity-70 transition-opacity"
+                  style={{ color: "var(--brand)" }}
+                >
+                  {bioExpanded ? "Thu gọn" : "Xem thêm"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">

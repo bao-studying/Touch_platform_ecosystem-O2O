@@ -34,17 +34,21 @@ const getOverview = async (req, res) => {
 
   const growthMap = {};
   const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const admins = await Admin.find({ createdAt: { $gte: sixMonthsAgo } }).select("createdAt");
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+  const monthsBack = [3, 6, 12].includes(Number(req.query.months)) ? Number(req.query.months) : 6;
+  const rangeStart = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
+  const admins = await Admin.find({ createdAt: { $gte: rangeStart } }).select("createdAt");
+  for (let i = 0; i < monthsBack; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1 - i), 1);
     growthMap[monthKey(d)] = 0;
   }
   admins.forEach((a) => {
     const key = monthKey(new Date(a.createdAt));
     if (key in growthMap) growthMap[key] += 1;
   });
-  const growth = Object.entries(growthMap).map(([month, count]) => ({ month, count }));
+  const growth = Object.entries(growthMap).map(([month, count]) => {
+    const [y, m] = month.split("-");
+    return { month, label: `Th${Number(m)}${monthsBack > 12 ? `/${y.slice(2)}` : ""}`, count };
+  });
 
   const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
   let downgrades = 0;
