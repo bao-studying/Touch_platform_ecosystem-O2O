@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
+import { CONTACT_INFO } from "../../lib/contactInfo";
 
 export default function PublicFooter() {
   const [support, setSupport] = useState({ supportZalo: "", supportHotline: "" });
@@ -34,13 +35,20 @@ export default function PublicFooter() {
         <div>
           <div className="text-sm font-semibold text-cream-50 mb-3">Hỗ trợ</div>
           <ul className="space-y-2 text-sm text-cream-200/70">
-            {support.supportHotline && <li>Hotline: {support.supportHotline}</li>}
-            {support.supportZalo && <li>Zalo: {support.supportZalo}</li>}
-            {!support.supportHotline && !support.supportZalo && <li>Gửi tin nhắn qua trang Liên hệ</li>}
+            <li>
+              <a href={`mailto:${CONTACT_INFO.supportEmail}`} className="hover:text-cream-50">
+                {CONTACT_INFO.supportEmail}
+              </a>
+            </li>
+            <li>Hotline: {support.supportHotline || CONTACT_INFO.hotline}</li>
+            <li>Zalo: {support.supportZalo || CONTACT_INFO.zalo}</li>
+            <li>
+              <Link to="/contact" className="hover:text-cream-50">Gửi tin nhắn qua trang Liên hệ</Link>
+            </li>
           </ul>
         </div>
       </div>
-      <div className="border-t border-cream-50/10 py-5 text-center text-xs text-cream-200/50">
+      <div className="border-t border-cream-50/10 pb-[calc(1.25rem+var(--bottom-nav-h))] pt-5 text-center text-xs text-cream-200/50">
         © {new Date().getFullYear()} O2O Brand Promotion & Customer Capture.
       </div>
     </footer>

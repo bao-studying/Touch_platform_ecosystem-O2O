@@ -3,6 +3,16 @@ import { Package, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import superAdminApi from "../../api/superAdminAxios";
 import { useToast } from "../../components/superadmin/Toast";
 import Modal from "../../components/superadmin/Modal";
+import { socket } from "../../lib/socket";
+
+const isPaidStatus = (s) => s === "paid" || s === "manual_confirmed";
+const METHOD_LABEL = { cod: "COD", bank_transfer: "Chuyển khoản" };
+// Nhãn + màu trạng thái thanh toán trên nền tối.
+const payBadge = (o) => {
+  if (isPaidStatus(o.paymentStatus)) return { label: "Đã thanh toán", cls: "bg-emerald-500/15 text-emerald-400" };
+  if (o.paymentStatus === "partial") return { label: "Trả một phần", cls: "bg-amber-500/15 text-amber-400" };
+  return { label: o.paymentMethod === "bank_transfer" ? "Chờ tiền về" : "Thu khi giao", cls: "bg-white/8 text-neutral-400" };
+};
 
 const STATUS_FLOW = ["pending", "in_production", "uid_loaded", "delivered"];
 const STATUS_LABEL = {
@@ -37,6 +47,20 @@ export default function Orders() {
   useEffect(() => {
     loadOrders();
     loadProducts();
+    // Có đơn mới / tiền về (SePay) → danh sách tự cập nhật, không cần tải lại trang.
+    const onNotif = (n) => {
+      if (n.type !== "order" && n.type !== "payment") return;
+      superAdminApi
+        .get("/super-admin/orders")
+        .then((res) => {
+          const list = Array.isArray(res.data) ? res.data : [];
+          setOrders(list);
+          setSelectedOrder((cur) => (cur ? list.find((o) => o._id === cur._id) || cur : cur));
+        })
+        .catch(() => {});
+    };
+    socket.on("notification:new", onNotif);
+    return () => socket.off("notification:new", onNotif);
   }, []);
 
   // Bọc mọi thao tác: lỗi → toast đỏ (không còn im lặng), thành công → toast xanh
@@ -127,6 +151,7 @@ export default function Orders() {
                 <th className="px-5 py-3 font-medium">Khách thuê</th>
                 <th className="px-5 py-3 font-medium hidden sm:table-cell">Sản phẩm</th>
                 <th className="px-5 py-3 font-medium">Tổng tiền</th>
+                <th className="px-5 py-3 font-medium hidden md:table-cell">Thanh toán</th>
                 <th className="px-5 py-3 font-medium">Trạng thái</th>
                 <th className="px-5 py-3 font-medium"></th>
               </tr>
@@ -142,6 +167,10 @@ export default function Orders() {
                     {o.items.map((i) => i.name).join(", ")}
                   </td>
                   <td className="px-5 py-3.5 text-white font-medium">{o.totalVnd.toLocaleString("vi-VN")}đ</td>
+                  <td className="px-5 py-3.5 hidden md:table-cell">
+                    <div className="text-xs text-neutral-400">{METHOD_LABEL[o.paymentMethod] || "COD"}</div>
+                    <span className={`mt-1 inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${payBadge(o).cls}`}>{payBadge(o).label}</span>
+                  </td>
                   <td className="px-5 py-3.5">
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLOR[o.status]}`}>{STATUS_LABEL[o.status]}</span>
                   </td>
@@ -221,20 +250,42 @@ export default function Orders() {
                 <span className="font-mono">{selectedOrder.assignedUid}</span>
               </div>
             )}
-            <div>
-              <span className="text-neutral-500">Thanh toán: </span>
-              {selectedOrder.paymentStatus === "manual_confirmed" ? (
-                <span className="text-emerald-400 font-medium">Đã xác nhận (thủ công)</span>
-              ) : (
-                <span className="text-amber-400 font-medium">Chưa thanh toán</span>
+            <div className="space-y-1">
+              <div>
+                <span className="text-neutral-500">Hình thức: </span>
+                <span className="font-medium">{selectedOrder.paymentMethod === "bank_transfer" ? "Chuyển khoản online (SePay)" : "Thanh toán khi nhận hàng (COD)"}</span>
+              </div>
+              {selectedOrder.paymentCode && (
+                <div>
+                  <span className="text-neutral-500">Mã thanh toán: </span>
+                  <span className="font-mono">{selectedOrder.paymentCode}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-neutral-500">Trạng thái: </span>
+                <span className={`font-medium ${isPaidStatus(selectedOrder.paymentStatus) ? "text-emerald-400" : "text-amber-400"}`}>
+                  {selectedOrder.paymentStatus === "paid"
+                    ? "Đã nhận tiền (SePay tự động)"
+                    : selectedOrder.paymentStatus === "manual_confirmed"
+                    ? "Đã xác nhận (thủ công)"
+                    : selectedOrder.paymentStatus === "partial"
+                    ? "Mới nhận một phần"
+                    : "Chưa thanh toán"}
+                </span>
+              </div>
+              {(selectedOrder.paidVnd > 0 || selectedOrder.paymentStatus === "partial") && (
+                <div>
+                  <span className="text-neutral-500">Đã nhận: </span>
+                  {selectedOrder.paidVnd.toLocaleString("vi-VN")}đ / {selectedOrder.totalVnd.toLocaleString("vi-VN")}đ
+                </div>
               )}
             </div>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            {selectedOrder.paymentStatus !== "manual_confirmed" && selectedOrder.status !== "cancelled" && (
+            {!isPaidStatus(selectedOrder.paymentStatus) && selectedOrder.status !== "cancelled" && (
               <button onClick={() => confirmPayment(selectedOrder)} className="text-xs font-medium bg-amber-500 text-white px-3 py-2 rounded-full">
-                Xác nhận đã thanh toán (demo)
+                {selectedOrder.paymentMethod === "bank_transfer" ? "Xác nhận đã nhận tiền (thủ công)" : "Xác nhận đã thu tiền COD"}
               </button>
             )}
             {selectedOrder.status !== "delivered" && selectedOrder.status !== "cancelled" && (

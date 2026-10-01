@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const PlanOrder = require("../models/PlanOrder");
 const Business = require("../models/Business");
-const { fetchLivePlanPrices } = require("../utils/adminServerClient");
+const { fetchLivePlanPrices, forwardSepayPayment } = require("../utils/adminServerClient");
 const { diffUnlockedFeatures } = require("../config/planLimits");
 const { applyPlanChange } = require("../utils/planGate");
 
@@ -20,11 +20,32 @@ const buildBankInfo = () => ({
   accountName: process.env.SEPAY_ACCOUNT_NAME || "",
 });
 
+// Thông tin tài khoản nhận tiền (công khai — khách nào thanh toán cũng thấy). Admin Server gọi endpoint này để dùng CHUNG
+// đúng 1 tài khoản/1 mã QR với Client Web, nên chỉ cần cấu hình SEPAY_* ở đây một lần.
+const isBankConfigured = (bank) => Boolean(bank.bankId && bank.accountNumber);
+
+// Đơn vật phẩm decor mua ở Admin Web có mã O2OHW + 8 ký tự (khác hẳn mã đơn nâng cấp gói O2O<mã DN><GÓI>...).
+const HARDWARE_ORDER_CODE = /O2OHW[A-Z0-9]{8}/;
+
+if (isBankConfigured(buildBankInfo()) && !process.env.SEPAY_WEBHOOK_TOKEN) {
+  console.warn(
+    "[paymentController] ⚠️  SEPAY_WEBHOOK_TOKEN đang trống: webhook SePay KHÔNG được xác thực — ai biết URL ngrok/domain cũng gửi được thanh toán giả. " +
+      "Đặt cùng 1 token ở đây và ở cấu hình webhook bên SePay (kiểu API Key) trước khi chạy thật."
+  );
+}
+
 const buildQrUrl = (bank, amount, content) => {
   if (!bank.bankId || !bank.accountNumber) return null;
   return `https://img.vietqr.io/image/${bank.bankId}-${bank.accountNumber}-qr_only.png?amount=${amount}&addInfo=${encodeURIComponent(
     content
   )}`;
+};
+
+// @desc  Tài khoản nhận tiền SePay đang cấu hình (Admin Server dùng chung)
+// @route GET /api/payments/bank-info   (public)
+const getBankInfo = (req, res) => {
+  const bank = buildBankInfo();
+  res.json({ configured: isBankConfigured(bank), ...bank });
 };
 
 // @desc  Tạo đơn nâng cấp gói (chờ chuyển khoản qua SePay)
@@ -106,6 +127,11 @@ const simulateSuccess = async (req, res) => {
     return res.status(403).json({ message: "Không có quyền" });
   }
   if (order.status !== "pending") return res.status(400).json({ message: "Đơn hàng không còn ở trạng thái chờ" });
+  // Đã cấu hình SePay thật (có mã QR) → giao diện không còn nút giả lập; chặn luôn ở server, nếu không bất kỳ khách nào
+  // cũng tự gọi được endpoint này để nâng cấp gói miễn phí.
+  if (isBankConfigured(buildBankInfo())) {
+    return res.status(403).json({ message: "Đã cấu hình SePay thật — không dùng thanh toán giả lập" });
+  }
 
   const oldPlan = order.business.plan;
   order.status = "paid";
@@ -133,6 +159,16 @@ const sepayWebhook = async (req, res) => {
     const { content = "", transferAmount, description = "" } = req.body;
     const rawContent = `${content} ${description}`.toUpperCase();
 
+    // Đơn vật phẩm decor (Admin Web): mã O2OHW... → chuyển tiếp sang Admin Server xử lý. Bỏ ký tự lạ trước khi dò vì
+    // ngân hàng hay chèn dấu chấm/khoảng trắng vào nội dung chuyển khoản.
+    const hardwareText = `${rawContent} ${req.body.code || ""}`.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (HARDWARE_ORDER_CODE.test(hardwareText)) {
+      const forwarded = await forwardSepayPayment(req.body);
+      // Admin Server lỗi/không chạy → success:false để SePay tự gọi lại sau (Admin Server xử lý idempotent nên gọi lại an toàn).
+      if (!forwarded.ok) return res.status(200).json({ success: false, message: "Admin Server chưa phản hồi, sẽ thử lại" });
+      return res.status(200).json({ success: Boolean(forwarded.data?.success) });
+    }
+
     const match = rawContent.match(/O2O[A-Z0-9]{10,20}/);
     if (!match) return res.status(200).json({ success: false, message: "Không tìm thấy mã đơn trong nội dung" });
 
@@ -156,4 +192,4 @@ const sepayWebhook = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getOrderStatus, simulateSuccess, sepayWebhook };
+module.exports = { createOrder, getOrderStatus, simulateSuccess, sepayWebhook, getBankInfo };

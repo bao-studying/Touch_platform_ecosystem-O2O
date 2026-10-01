@@ -9,9 +9,10 @@ import AuthLayout from "../../components/auth/AuthLayout";
 import AuthField from "../../components/auth/AuthField";
 import PasswordField from "../../components/auth/PasswordField";
 
-// Đăng nhập thường — dùng cho cả tài khoản Tenant (chủ doanh nghiệp) lẫn tài khoản Super Admin (chủ nền tảng).
-// Thử đăng nhập Tenant trước; nếu sai email/mật khẩu, thử tiếp với tài khoản Super Admin trước khi báo lỗi.
-// Nếu là tài khoản Super Admin, chuyển thẳng vào /super-admin/dashboard thay vì trang Dashboard doanh nghiệp.
+// Đăng nhập thường — dùng cho cả tài khoản KHÁCH (chủ doanh nghiệp mua hàng) lẫn tài khoản Super Admin (chủ nền tảng).
+// Thử đăng nhập khách trước; nếu sai email/mật khẩu, thử tiếp với tài khoản Super Admin trước khi báo lỗi.
+//   • Super Admin  → /super-admin/dashboard (Dashboard chỉ dành cho Super Admin).
+//   • Khách        → /account (cài đặt tài khoản: hồ sơ, địa chỉ, giỏ hàng, đơn hàng) hoặc trang họ đang định quay lại (?redirect=).
 // Giao diện dùng chung với client-web (AuthLayout + AuthField + PasswordField + AuthSidePanel).
 export default function Login() {
   return (
@@ -21,9 +22,16 @@ export default function Login() {
   );
 }
 
+// Chỉ nhận đường dẫn nội bộ (chống open-redirect kiểu ?redirect=//evil.com) và không cho khách bị đẩy vào khu Super Admin.
+const safeRedirect = (raw) => {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return null;
+  if (raw.startsWith("/super-admin") || raw === "/login" || raw === "/register") return null;
+  return raw;
+};
+
 function LoginForm() {
-  const { login } = useAuth();
-  const { login: loginSuperAdmin } = useSuperAdminAuth();
+  const { admin, login, logout: logoutCustomer } = useAuth();
+  const { superAdmin, login: loginSuperAdmin, logout: logoutSuperAdmin } = useSuperAdminAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -37,16 +45,23 @@ function LoginForm() {
     setLoading(true);
     try {
       await login(form.email, form.password);
-      navigate(searchParams.get("redirect") || "/admin");
+      logoutSuperAdmin(); // đăng nhập khách xong thì bỏ phiên Super Admin cũ (nếu có) để 2 vai trò không lẫn nhau
+      navigate(safeRedirect(searchParams.get("redirect")) || "/account", { replace: true });
       return;
     } catch (err) {
-      // Sai email/mật khẩu ở phía Tenant → thử lại với tài khoản Super Admin trước khi báo lỗi.
+      // Sai email/mật khẩu ở phía khách → thử lại với tài khoản Super Admin trước khi báo lỗi.
       if (err.response?.status === 401) {
         try {
           await loginSuperAdmin(form.email, form.password);
-          navigate("/super-admin/dashboard");
+          logoutCustomer(); // bỏ phiên khách cũ (nếu có)
+          navigate("/super-admin/dashboard", { replace: true });
           return;
-        } catch {
+        } catch (saErr) {
+          // Super Admin API chỉ cho thử tối đa vài lần / 15 phút — nói rõ thay vì báo "sai mật khẩu" khó hiểu.
+          if (saErr.response?.status === 429) {
+            setError(saErr.response.data?.message || "Bạn đã thử quá nhiều lần, vui lòng thử lại sau ít phút");
+            return;
+          }
           // Không khớp tài khoản Super Admin nào — rơi xuống báo lỗi chung bên dưới.
         }
       }
@@ -66,6 +81,20 @@ function LoginForm() {
         </span>
         <span className="font-display text-lg text-cream-50">O2O Brand</span>
       </div>
+
+      {(admin || superAdmin) && (
+        <div className="mb-6 rounded-2xl bg-cream-50/[0.06] px-4 py-3 text-xs text-cream-100/80 ring-1 ring-cream-50/10">
+          Bạn đang đăng nhập với tên <strong className="text-cream-50">{admin ? admin.name : superAdmin.name}</strong>.{" "}
+          <Link to={admin ? "/account" : "/super-admin/dashboard"} className="font-medium text-amber-400 underline underline-offset-2">
+            {admin ? "Vào tài khoản" : "Vào Dashboard"}
+          </Link>
+          {" · "}
+          <button type="button" onClick={admin ? logoutCustomer : logoutSuperAdmin} className="font-medium text-amber-400 underline underline-offset-2">
+            Đăng xuất
+          </button>
+          <span className="block pt-1 text-cream-100/50">Đăng nhập bên dưới sẽ chuyển sang tài khoản khác.</span>
+        </div>
+      )}
 
       <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-amber-400">CHÀO MỪNG TRỞ LẠI</p>
       <h1 className="mb-2 font-display text-3xl text-cream-50">Đăng nhập</h1>

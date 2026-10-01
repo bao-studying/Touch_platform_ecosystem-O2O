@@ -83,6 +83,43 @@ Không có link công khai nào dẫn tới trang đăng nhập Super Admin. Và
 Tài khoản Super Admin đầu tiên tự tạo khi `admin-server` khởi động lần đầu, đọc từ
 `SUPER_ADMIN_SEED_EMAIL`/`SUPER_ADMIN_SEED_PASSWORD` trong `admin-server/.env`.
 
+## Tài khoản khách, giỏ hàng & đặt hàng (trang công khai)
+
+- **Đăng nhập** ở `/login` dùng chung cho 2 vai trò: tài khoản **Super Admin** → `/super-admin/dashboard`; tài khoản **khách** (chủ doanh nghiệp) → `/account` (hoặc trang họ đang định quay lại qua `?redirect=`). Dashboard chỉ dành cho Super Admin.
+- **`/account`** (yêu cầu đăng nhập): tab Hồ sơ · Địa chỉ · Giỏ hàng · Đơn hàng · Bảo mật. Đơn hàng cập nhật realtime khi Super Admin đổi trạng thái.
+- **`/cart`**: ai cũng xem/sửa giỏ được. Khách vãng lai lưu giỏ ở localStorage; đăng nhập xong giỏ được gộp vào giỏ trên server (collection `CustomerProfile`) nên dùng được ở thiết bị khác.
+- Nút **Tải app** ở navbar trỏ tới Client Web — đặt `VITE_CLIENT_WEB_URL` trong `admin-web/.env`.
+- Thông tin ở trang **Liên hệ** (email, hotline, giờ làm việc, mạng xã hội) là **dữ liệu demo** trong `admin-web/src/lib/contactInfo.js` — thay bằng thông tin thật.
+
+API mới (đều qua `protectTenant`): `GET/PUT /api/customer/profile`, `POST/PUT/DELETE /api/customer/addresses[/:id]`, `GET/PUT /api/customer/cart`, `PUT /api/auth/password`. `POST /api/orders` nay **bắt buộc có địa chỉ giao hàng** (`addressId` hoặc `shipping`).
+
+## Thanh toán COD / chuyển khoản online (SePay) — dùng chung với Client Web
+
+Khi đặt hàng, khách chọn **Thanh toán khi nhận hàng (COD)** hoặc **Chuyển khoản online (QR)**.
+
+**Không cần cấu hình webhook SePay mới.** Webhook hiện có của bạn (link ngrok/domain → `POST /api/payments/webhook/sepay` của Client Server) dùng cho cả hai loại thanh toán:
+
+| Loại | Mã nội dung chuyển khoản | Ai xử lý |
+|---|---|---|
+| Nâng cấp gói (Client Web) | `O2O<mã DN><GÓI><4 ký tự>` | Client Server (logic cũ, giữ nguyên) |
+| Vật phẩm decor (Admin Web) | `O2OHW` + 8 ký tự | Client Server **tự chuyển tiếp** sang Admin Server (`POST /api/payments/internal/sepay`, xác thực bằng JWT ngắn hạn ký bằng `JWT_SECRET` dùng chung) |
+
+- **Tài khoản nhận tiền và mã QR dùng chung**: Admin Server tự đọc `SEPAY_BANK_ID / SEPAY_ACCOUNT_NO / SEPAY_ACCOUNT_NAME` từ Client Server (`GET /api/payments/bank-info`, qua `CLIENT_SERVER_URL`) nên chỉ cấu hình một lần ở `client-server/.env`. QR cùng định dạng VietQR (`img.vietqr.io`) như modal nâng cấp gói. Super Admin → Cài đặt hệ thống hiển thị tài khoản/QR này (chỉ đọc).
+- **Điều kiện để chạy**: Client Server và Admin Server cùng chạy; `ADMIN_SERVER_URL` (client-server) và `CLIENT_SERVER_URL` (admin-server) đúng; hai server **dùng chung `JWT_SECRET`** (đã là yêu cầu sẵn có).
+- Đơn chuyển khoản có QR hiệu lực 15 phút (đếm ngược, khách "Làm mới mã" được). **Quá hạn mà khách đã chuyển khoản thì vẫn được ghi nhận** (không mất tiền khách). Màn hình thanh toán tự cập nhật (Socket.IO + hỏi lại mỗi 3 giây).
+- Chuyển thiếu → trạng thái "một phần", QR chỉ đòi phần còn lại; chuyển trùng / đơn đã hủy / mã không có đơn → báo Super Admin đối soát tay. Mọi giao dịch lưu ở collection `paymenttransactions` (chống xử lý trùng theo id SePay; giao dịch dở dang được xử lý nốt khi SePay gọi lại). Super Admin vẫn xác nhận tay được ở trang Đơn hàng.
+- **COD**: sau khi giao, Super Admin bấm "Xác nhận đã thu tiền COD".
+- **Chưa cấu hình tài khoản (chỉ môi trường dev)**: khách vẫn đặt chuyển khoản được nhưng thay QR là nút "Giả lập thanh toán" (giống Client Web). Khi `NODE_ENV=production` mà chưa có tài khoản thì ẩn lựa chọn chuyển khoản.
+- ⚠️ **Đặt `SEPAY_WEBHOOK_TOKEN`** (client-server/.env) trùng với API Key khai báo ở webhook SePay. Để trống thì ai biết URL ngrok cũng gửi được thanh toán giả (server in cảnh báo khi khởi động). Endpoint giả lập `simulate-success` của Client Server nay bị chặn (403) khi đã cấu hình SePay thật.
+
+## Chuông thông báo
+
+Header của trang công khai (khách đã đăng nhập) và Super Admin đều có chuông + bộ đếm chưa đọc, trên cả mobile lẫn desktop, cập nhật realtime qua Socket.IO (`notification:new`). Khách nhận: tạo đơn, đổi trạng thái đơn, thanh toán thành công/thiếu tiền, phản hồi hỗ trợ. Super Admin nhận: đơn mới, tiền về/không khớp/đơn hủy có tiền, ticket mới, liên hệ mới, khách đăng ký. API: `GET /api/notifications`, `PUT /api/notifications/read-all`, `PUT /api/notifications/:id/read` (khách) và `/api/super-admin/notifications` (tương tự). Thông báo tự xóa sau 90 ngày.
+
+## Giao diện mobile (trang công khai)
+
+Menu hamburger được thay bằng **thanh điều hướng nổi ở đáy màn hình** (Trang chủ · Giới thiệu · Cửa hàng · Liên hệ · Tải app). Header luôn có **chuông · giỏ hàng · avatar tròn** cạnh nhau; chạm avatar vào thẳng trang Tài khoản. Sản phẩm ở Cửa hàng và Giỏ hàng hiển thị dạng lưới thẻ gọn, 3 thẻ mỗi hàng. Biến CSS `--bottom-nav-h` là chiều cao vùng thanh dưới — phần tử ghim/nổi mới nên dùng biến này để không bị che.
+
 ## Real-time bằng Socket.IO
 
 Admin Server chạy 1 Socket.IO server (chung port với HTTP API). Admin Web đã kết nối sẵn. Client Web

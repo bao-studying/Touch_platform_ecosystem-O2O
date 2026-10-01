@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, Save, KeyRound, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Save, KeyRound, Loader2, Landmark, AlertTriangle } from "lucide-react";
 import superAdminApi from "../../api/superAdminAxios";
 import { useToast } from "../../components/superadmin/Toast";
 
@@ -121,6 +121,50 @@ export default function Settings() {
             {savingSettings ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {savingSettings ? "Đang lưu..." : "Lưu"}
           </button>
         </div>
+      </div>
+
+      <div className="bg-neutral-900 border border-white/5 rounded-3xl p-5">
+        <h2 className="font-medium text-white mb-1 flex items-center gap-2">
+          <Landmark size={16} className="text-orange-400" /> Nhận tiền chuyển khoản (SePay)
+        </h2>
+        <p className="text-xs text-neutral-500 mb-4">
+          Dùng <b className="text-neutral-300">chung một tài khoản và một mã QR</b> với Client Web (nâng cấp gói) và trang giới thiệu (mua vật phẩm decor). Không cần nhập hay cấu hình webhook thêm ở đây.
+        </p>
+
+        {data.payment.configured ? (
+          <div className="flex flex-col sm:flex-row gap-5 items-start">
+            <img src={data.payment.qrUrl} alt="Mã QR nhận tiền" onError={(e) => (e.currentTarget.style.visibility = "hidden")} className="w-36 h-36 shrink-0 rounded-2xl bg-white p-2 mx-auto sm:mx-0" />
+            <dl className="flex-1 min-w-0 w-full text-sm divide-y divide-white/5">
+              {[
+                ["Ngân hàng", data.payment.bank],
+                ["Số tài khoản", data.payment.accountNumber],
+                ["Chủ tài khoản", data.payment.accountName || "—"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 py-2">
+                  <dt className="text-neutral-500">{k}</dt>
+                  <dd className="text-white font-medium text-right break-all">{v}</dd>
+                </div>
+              ))}
+              <div className="flex justify-between gap-4 py-2">
+                <dt className="text-neutral-500">Nguồn cấu hình</dt>
+                <dd className="text-neutral-300 text-right">
+                  {data.payment.source === "client-server" ? "Tự lấy từ Client Server" : "SEPAY_* trong .env Admin Server"}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs text-amber-300">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            <span>
+              Chưa lấy được tài khoản nhận tiền. Điền <code>SEPAY_BANK_ID</code>, <code>SEPAY_ACCOUNT_NO</code>, <code>SEPAY_ACCOUNT_NAME</code> trong <code>.env</code> của Client Server và để Client Server chạy
+              (Admin Server tự đọc qua <code>CLIENT_SERVER_URL</code>). Khi chưa có, khách vẫn đặt hàng được nhưng chỉ có nút giả lập thanh toán (chế độ dev).
+            </span>
+          </div>
+        )}
+        <p className="mt-4 text-[11px] text-neutral-600">
+          Tiền về → SePay gọi webhook của Client Server → giao dịch mã <code className="text-neutral-400">O2OHW…</code> tự chuyển sang Admin Server và đơn được xác nhận. Nếu cần, bạn vẫn xác nhận tay ở trang Đơn hàng.
+        </p>
       </div>
 
       <div className="bg-neutral-900 border border-white/5 rounded-3xl p-5">

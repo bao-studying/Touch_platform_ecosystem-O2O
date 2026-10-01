@@ -1,12 +1,15 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { SuperAdminAuthProvider, useSuperAdminAuth } from "./context/SuperAdminAuthContext";
+import { CartProvider } from "./context/CartContext";
 
 import PublicLayout from "./components/public/PublicLayout";
 import Home from "./pages/public/Home";
 import About from "./pages/public/About";
 import Store from "./pages/public/Store";
 import Contact from "./pages/public/Contact";
+import Cart from "./pages/public/Cart";
+import Account from "./pages/account/Account";
 import DownloadApp from "./pages/public/DownloadApp";
 import VerifyEmail from "./pages/public/VerifyEmail";
 import Login from "./pages/auth/Login";
@@ -26,6 +29,15 @@ function RequireSuperAdmin({ children }) {
   const { superAdmin, loading } = useSuperAdminAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-ink-950 text-white">Đang tải...</div>;
   if (!superAdmin) return <Navigate to="/super-admin/login" replace />;
+  return children;
+}
+
+// Khu vực dành cho KHÁCH đã đăng nhập (tài khoản, giỏ hàng đã lưu, đơn hàng). Chưa đăng nhập → về trang đăng nhập rồi quay lại đúng chỗ.
+function RequireCustomer({ children }) {
+  const { admin, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <div className="flex min-h-[60vh] items-center justify-center text-espresso-700">Đang tải...</div>;
+  if (!admin) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   return children;
 }
 
@@ -59,6 +71,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <SuperAdminAuthProvider>
+          <CartProvider>
           <Routes>
             {/* SaaS Landing Page công khai — dành cho khách hàng doanh nghiệp tiềm năng */}
             <Route element={<PublicLayout />}>
@@ -66,6 +79,15 @@ export default function App() {
               <Route path="/about" element={<About />} />
               <Route path="/store" element={<Store />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route
+                path="/account"
+                element={
+                  <RequireCustomer>
+                    <Account />
+                  </RequireCustomer>
+                }
+              />
             </Route>
 
             <Route path="/download" element={<DownloadApp />} />
@@ -78,6 +100,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </CartProvider>
         </SuperAdminAuthProvider>
       </AuthProvider>
     </BrowserRouter>

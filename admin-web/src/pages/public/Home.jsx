@@ -315,6 +315,8 @@ function HeroScene({ sx, sy, scroll, reduce, imageUrl }) {
 }
 
 /* ---------------------------------------------------------------- Câu chuyện "chạm → mở → khách quen" (ghim khi cuộn) */
+// Lưu ý layout: StoryStage dùng h-full nên cột chứa nó PHẢI có chiều cao xác định. Ở desktop cột này được kéo giãn
+// (self-stretch) — nếu đổi thành items-center thì chiều cao về auto, khung (toàn phần tử absolute) co về 0×0 và mất animation.
 function Story() {
   const reduce = useReducedMotion();
   return reduce ? <StoryStatic /> : <StoryPinned />;
@@ -333,9 +335,9 @@ function StoryPinned() {
 
   return (
     <section id="story" ref={ref} className="relative h-[320vh] scroll-mt-16 bg-stage-dark">
-      <div className="sticky top-16 flex h-[calc(100svh-4rem)] items-center overflow-hidden">
-        <div className="mx-auto grid h-full w-full max-w-6xl grid-rows-[minmax(0,1fr)_auto] gap-2 px-5 py-4 lg:grid-cols-2 lg:grid-rows-1 lg:items-center lg:gap-14 lg:py-0">
-          <div className="order-2 lg:order-1">
+      <div className="sticky top-16 flex h-[calc(100svh-4rem-var(--bottom-nav-h))] items-center overflow-hidden">
+        <div className="mx-auto grid h-full w-full max-w-6xl grid-rows-[minmax(0,1fr)_auto] gap-2 px-5 py-4 lg:grid-cols-2 lg:grid-rows-1 lg:gap-14 lg:py-0">
+          <div className="order-2 lg:order-1 lg:self-center">
             <h2 className="font-display text-[1.7rem] font-semibold leading-tight tracking-[-0.01em] text-cream-50 sm:text-4xl lg:text-5xl">
               Từ một cú chạm đến một khách quen
             </h2>
@@ -351,7 +353,7 @@ function StoryPinned() {
             </div>
           </div>
 
-          <div className="order-1 flex min-h-0 items-center justify-center lg:order-2">
+          <div className="order-1 flex min-h-0 items-center justify-center lg:order-2 lg:self-stretch lg:py-6">
             <StoryStage p={p} />
           </div>
         </div>

@@ -1,6 +1,7 @@
 const Ticket = require("../models/Ticket");
 const Business = require("../models/shared/SharedBusiness");
 const { emitToTenant } = require("../sockets");
+const { notifyTenant, notifySuperAdmins } = require("../utils/notify");
 
 // ============ PHÍA TENANT ============
 // @route POST /api/tickets
@@ -14,6 +15,7 @@ const createTicket = async (req, res) => {
     subject,
     messages: [{ from: "tenant", senderName: req.admin.name, message }],
   });
+  notifySuperAdmins({ type: "ticket", title: "Ticket hỗ trợ mới", body: `${req.admin.name}: ${subject}`, link: "/super-admin/tickets" });
   res.status(201).json(ticket);
 };
 
@@ -33,6 +35,7 @@ const replyAsTenant = async (req, res) => {
   ticket.messages.push({ from: "tenant", senderName: req.admin.name, message: req.body.message });
   if (ticket.status === "resolved") ticket.status = "open";
   await ticket.save();
+  notifySuperAdmins({ type: "ticket", title: "Khách trả lời ticket", body: `${req.admin.name}: ${ticket.subject}`, link: "/super-admin/tickets" });
   res.json(ticket);
 };
 
@@ -54,6 +57,7 @@ const replyAsSuperAdmin = async (req, res) => {
   else if (ticket.status === "open") ticket.status = "in_progress";
   await ticket.save();
   emitToTenant(ticket.tenant.toString(), "ticket:reply", { ticketId: ticket._id });
+  notifyTenant(ticket.tenant, { type: "ticket", title: "Hỗ trợ đã phản hồi ticket của bạn", body: ticket.subject });
   res.json(ticket);
 };
 

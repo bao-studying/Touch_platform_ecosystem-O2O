@@ -12,6 +12,16 @@ body,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Chiều cao vùng thanh điều hướng dưới (chỉ có ở mobile) — các phần tử ghim/nổi dùng biến này để không bị che. */
+:root {
+  --bottom-nav-h: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  :root {
+    --bottom-nav-h: 0px;
+  }
+}
+
 /* Quill (react-quill-new) chỉ hỗ trợ theme sáng mặc định ("snow") — override tối cho khu Super Admin (Cms.jsx) */
 .dash-quill .ql-toolbar {
   background: rgba(255, 255, 255, 0.03);

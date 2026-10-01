@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, CheckCircle2, Lock, Minus, PackageOpen, Plus, ShoppingBag, XCircle } from "lucide-react";
+import { Check, Lock, Minus, PackageOpen, Plus, ShoppingBag } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import { CLIENT_WEB_URL } from "../../lib/config";
 import { socket } from "../../lib/socket";
 import { RevealWords, Spotlight } from "../../components/public/fx";
 
@@ -23,30 +25,19 @@ export default function PublicStore() {
   const { admin } = useAuth();
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
-  const [hardware, setHardware] = useState([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const [hardwareLoading, setHardwareLoading] = useState(true);
-  const [cart, setCart] = useState({}); // { productId: qty }
-  const [placing, setPlacing] = useState(false);
-  const [orderMsg, setOrderMsg] = useState("");
-  const [orderOk, setOrderOk] = useState(false);
   const [tab, setTab] = useState("plans");
+  // Giỏ hàng + danh mục vật phẩm nằm ở CartContext — dùng chung với trang /cart và Tài khoản, giữ nguyên khi chuyển trang.
+  const { catalog: hardware, catalogLoading: hardwareLoading, qtyOf, setQty, count: cartCount, total: cartTotal } = useCart();
 
   const loadPlans = () =>
     api.get("/public/plans").then((res) => setPlans(res.data)).catch(() => {}).finally(() => setPlansLoading(false));
-  const loadHardware = () =>
-    api.get("/public/hardware").then((res) => setHardware(res.data)).catch(() => {}).finally(() => setHardwareLoading(false));
 
   useEffect(() => {
     loadPlans();
-    loadHardware();
-    // Super Admin đổi giá/sản phẩm ở đâu đó → trang này tự cập nhật ngay, không cần tải lại.
+    // Super Admin đổi giá gói ở đâu đó → trang này tự cập nhật ngay, không cần tải lại (giá vật phẩm do CartContext lo).
     socket.on("plan:updated", loadPlans);
-    socket.on("hardware:updated", loadHardware);
-    return () => {
-      socket.off("plan:updated", loadPlans);
-      socket.off("hardware:updated", loadHardware);
-    };
+    return () => socket.off("plan:updated", loadPlans);
   }, []);
 
   // Tab đang xem tự đổi theo vị trí cuộn.
@@ -62,49 +53,12 @@ export default function PublicStore() {
     return () => io.disconnect();
   }, []);
 
-  // Thông báo đặt hàng tự tắt sau vài giây.
-  useEffect(() => {
-    if (!orderMsg) return;
-    const t = setTimeout(() => setOrderMsg(""), 7000);
-    return () => clearTimeout(t);
-  }, [orderMsg]);
-
-  const setQty = (id, qty) => setCart((c) => ({ ...c, [id]: Math.max(0, qty) }));
-
-  const cartItems = hardware
-    .filter((p) => cart[p._id] > 0)
-    .map((p) => ({ product: p, qty: cart[p._id] }));
-  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.priceVnd * i.qty, 0);
-  const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
-
   const handlePlanSelect = (planKey) => {
     if (admin) {
       // đã có tài khoản — đổi gói ngay trong Admin Dashboard thật (Client Web), không phải ở đây
-      window.location.href = `${import.meta.env.VITE_CLIENT_WEB_URL || "http://localhost:5173"}/admin/store?token=${localStorage.getItem("o2o_token") || ""}`;
+      window.location.href = `${CLIENT_WEB_URL}/admin/store?token=${localStorage.getItem("o2o_token") || ""}`;
     } else {
       navigate(`/register?plan=${planKey}`);
-    }
-  };
-
-  const handleOrder = async () => {
-    if (!admin) {
-      navigate("/login?redirect=/store");
-      return;
-    }
-    setPlacing(true);
-    setOrderMsg("");
-    try {
-      await api.post("/orders", {
-        items: cartItems.map((i) => ({ productId: i.product._id, qty: i.qty })),
-      });
-      setCart({});
-      setOrderOk(true);
-      setOrderMsg("Đặt hàng thành công! Đội ngũ O2O sẽ liên hệ xác nhận sớm nhất.");
-    } catch (err) {
-      setOrderOk(false);
-      setOrderMsg(err.response?.data?.message || "Không thể đặt hàng, vui lòng thử lại");
-    } finally {
-      setPlacing(false);
     }
   };
 
@@ -187,12 +141,12 @@ export default function PublicStore() {
             )}
           </div>
 
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-3 gap-2 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
             {hardwareLoading &&
               [0, 1, 2].map((i) => <div key={i} className="h-96 animate-pulse rounded-3xl bg-cream-50/[0.06]" />)}
             {!hardwareLoading &&
               hardware.map((p, i) => (
-                <ProductCard key={p._id} p={p} i={i} qty={cart[p._id] || 0} setQty={(q) => setQty(p._id, q)} />
+                <ProductCard key={p._id} p={p} i={i} qty={qtyOf(p._id)} setQty={(q) => setQty(p._id, q)} />
               ))}
           </div>
 
@@ -215,7 +169,7 @@ export default function PublicStore() {
         </div>
       </section>
 
-      {/* ===== Giỏ hàng nổi ===== */}
+      {/* ===== Giỏ hàng nổi — bấm để xem giỏ / đặt hàng ở trang /cart ===== */}
       <AnimatePresence>
         {cartCount > 0 && (
           <motion.div
@@ -223,48 +177,19 @@ export default function PublicStore() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 110, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl"
+            className="fixed inset-x-4 bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-50 mx-auto max-w-xl md:bottom-4"
           >
             <div className="flex items-center justify-between gap-4 rounded-full bg-espresso-950/90 py-2.5 pl-6 pr-2.5 text-cream-50 shadow-[0_26px_60px_-20px_rgba(0,0,0,0.75)] ring-1 ring-cream-50/15 backdrop-blur-xl">
               <div>
                 <div className="text-xs text-cream-100/60">{cartCount} sản phẩm</div>
                 <div className="font-display text-lg font-semibold leading-tight">{cartTotal.toLocaleString("vi-VN")}đ</div>
               </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCart({})} className="px-3 text-sm text-cream-100/60 transition-colors hover:text-cream-50">
-                  Xoá
-                </button>
-                <button
-                  onClick={handleOrder}
-                  disabled={placing}
-                  className="rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3 text-sm font-semibold text-espresso-950 transition-all hover:brightness-105 disabled:opacity-60"
-                >
-                  {placing ? "Đang đặt hàng..." : admin ? "Đặt hàng" : "Đăng nhập để đặt hàng"}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ===== Thông báo kết quả đặt hàng ===== */}
-      <AnimatePresence>
-        {orderMsg && (
-          <motion.div
-            role="status"
-            initial={{ y: -30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 340, damping: 30 }}
-            className="fixed inset-x-4 top-20 z-50 mx-auto max-w-md"
-          >
-            <div
-              className={`flex items-start gap-3 rounded-2xl px-4 py-3.5 text-sm shadow-2xl ring-1 backdrop-blur-xl ${
-                orderOk ? "bg-espresso-950/95 text-cream-50 ring-sage-400/40" : "bg-espresso-950/95 text-cream-50 ring-clay-500/50"
-              }`}
-            >
-              {orderOk ? <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-sage-400" /> : <XCircle size={18} className="mt-0.5 shrink-0 text-clay-500" />}
-              <p className="flex-1">{orderMsg}</p>
+              <Link
+                to="/cart"
+                className="rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3 text-sm font-semibold text-espresso-950 transition-all hover:brightness-105"
+              >
+                Xem giỏ hàng
+              </Link>
             </div>
           </motion.div>
         )}
@@ -327,58 +252,54 @@ function PlanCard({ plan, index, onSelect }) {
   );
 }
 
+// Thẻ sản phẩm: trên mobile thu gọn để 1 hàng hiện 3 thẻ (ảnh vuông, tên, giá, nút thêm); từ màn hình sm trở lên hiện đầy đủ mô tả.
 function ProductCard({ p, i, qty, setQty }) {
   return (
     <motion.div
       {...reveal(i)}
-      className="group flex flex-col overflow-hidden rounded-3xl bg-cream-50/[0.06] ring-1 ring-cream-50/10 transition-colors hover:bg-cream-50/[0.1]"
+      className="group flex flex-col overflow-hidden rounded-2xl bg-cream-50/[0.06] ring-1 ring-cream-50/10 transition-colors hover:bg-cream-50/[0.1] sm:rounded-3xl"
     >
-      <div className="relative h-52 overflow-hidden">
+      <div className="relative aspect-square overflow-hidden sm:aspect-auto sm:h-52">
         {p.imageUrl ? (
           <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-espresso-700 to-espresso-900">
-            <ShoppingBag className="text-amber-400/50" size={44} />
+            <ShoppingBag className="text-amber-400/50" size={30} />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-espresso-950/60 via-transparent to-transparent" />
         {p.type && (
-          <span className="absolute left-3 top-3 rounded-full bg-espresso-950/70 px-3 py-1 text-xs font-medium text-amber-400 backdrop-blur">{p.type}</span>
+          <span className="absolute left-3 top-3 hidden rounded-full bg-espresso-950/70 px-3 py-1 text-xs font-medium text-amber-400 backdrop-blur sm:inline-flex">{p.type}</span>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="font-display text-xl font-semibold text-cream-50">{p.name}</h3>
-        <p className="mt-2 flex-1 text-sm leading-relaxed text-cream-100/65">{p.description}</p>
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <span className="font-display text-xl font-semibold text-cream-50">{p.priceVnd.toLocaleString("vi-VN")}đ</span>
+      <div className="flex flex-1 flex-col p-2 sm:p-5">
+        <h3 className="line-clamp-2 font-display text-[12px] font-semibold leading-tight text-cream-50 sm:line-clamp-none sm:text-xl">{p.name}</h3>
+        <p className="mt-2 hidden flex-1 text-sm leading-relaxed text-cream-100/65 sm:block">{p.description}</p>
+        <div className="mt-auto flex flex-col gap-1.5 pt-2 sm:mt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pt-0">
+          <span className="font-display text-[13px] font-semibold text-cream-50 sm:text-xl">{p.priceVnd.toLocaleString("vi-VN")}đ</span>
           {qty === 0 ? (
             <button
               onClick={() => setQty(1)}
-              className="flex items-center gap-1.5 rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-espresso-950 transition-all hover:bg-amber-400/90 active:scale-95"
+              aria-label={`Thêm ${p.name} vào giỏ`}
+              className="flex w-full items-center justify-center gap-1 rounded-full bg-amber-400 py-1.5 text-xs font-semibold text-espresso-950 transition-all hover:bg-amber-400/90 active:scale-95 sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm"
             >
-              <Plus size={15} strokeWidth={2.6} /> Thêm
+              <Plus size={14} strokeWidth={2.6} /> Thêm
             </button>
           ) : (
-            <div className="flex items-center gap-1 rounded-full bg-cream-50/10 p-1 ring-1 ring-cream-50/15">
-              <button onClick={() => setQty(qty - 1)} aria-label="Giảm số lượng" className="flex h-8 w-8 items-center justify-center rounded-full text-cream-50 transition-colors hover:bg-cream-50/15">
-                <Minus size={14} />
+            <div className="flex items-center justify-between rounded-full bg-cream-50/10 p-0.5 ring-1 ring-cream-50/15 sm:justify-start sm:gap-1 sm:p-1">
+              <button onClick={() => setQty(qty - 1)} aria-label="Giảm số lượng" className="flex h-7 w-7 items-center justify-center rounded-full text-cream-50 transition-colors hover:bg-cream-50/15 sm:h-8 sm:w-8">
+                <Minus size={13} />
               </button>
-              <div className="relative flex h-8 w-7 items-center justify-center overflow-hidden text-sm font-semibold text-cream-50">
+              <div className="relative flex h-7 w-5 items-center justify-center overflow-hidden text-sm font-semibold text-cream-50 sm:h-8 sm:w-7">
                 <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span
-                    key={qty}
-                    initial={{ y: -14, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 14, opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                  >
+                  <motion.span key={qty} initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 14, opacity: 0 }} transition={{ duration: 0.18 }}>
                     {qty}
                   </motion.span>
                 </AnimatePresence>
               </div>
-              <button onClick={() => setQty(qty + 1)} aria-label="Tăng số lượng" className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-espresso-950 transition-transform active:scale-90">
-                <Plus size={14} strokeWidth={2.6} />
+              <button onClick={() => setQty(qty + 1)} aria-label="Tăng số lượng" className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400 text-espresso-950 transition-transform active:scale-90 sm:h-8 sm:w-8">
+                <Plus size={13} strokeWidth={2.6} />
               </button>
             </div>
           )}

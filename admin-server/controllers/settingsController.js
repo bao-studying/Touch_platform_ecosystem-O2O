@@ -1,5 +1,6 @@
 const PlatformSettings = require("../models/PlatformSettings");
 const SuperAdmin = require("../models/SuperAdmin");
+const { getBankConfig, isBankConfigured, buildQrUrl, bankDisplayName } = require("../utils/payment");
 
 // @desc  Thông tin hỗ trợ công khai (Zalo/hotline) — cho Footer & trang Liên hệ hiển thị, KHÔNG lộ dữ liệu nhạy cảm
 // @route GET /api/public/support-info
@@ -17,14 +18,26 @@ const getSettings = async (req, res) => {
   let settings = await PlatformSettings.findOne({ singleton: "main" });
   if (!settings) settings = await PlatformSettings.create({ singleton: "main" });
 
+  // Tài khoản nhận tiền SePay — DÙNG CHUNG với Client Web/Client Server (chỉ đọc, không cần nhập lại ở đâu cả).
+  const bank = await getBankConfig();
+
   res.json({
     settings,
     envStatus: {
       mailConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
-      sepayConfigured: Boolean(process.env.SEPAY_API_KEY),
+      sepayConfigured: isBankConfigured(bank),
       mongoConfigured: Boolean(process.env.MONGO_URI),
     },
     superAdminAccount: { name: req.superAdmin.name, email: req.superAdmin.email },
+    payment: {
+      configured: isBankConfigured(bank),
+      source: bank.source, // "env" (SEPAY_* ở .env Admin Server) | "client-server" (tự lấy từ Client Server) | "none"
+      bankId: bank.bankId,
+      bank: bankDisplayName(bank.bankId),
+      accountNumber: bank.accountNumber,
+      accountName: bank.accountName,
+      qrUrl: buildQrUrl(bank, 0, ""), // QR nhận tiền không kèm số tiền
+    },
   });
 };
 

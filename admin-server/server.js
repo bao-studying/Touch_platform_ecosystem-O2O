@@ -21,11 +21,14 @@ app.get("/", (req, res) => {
 // ---- Tenant (đăng ký/đăng nhập trên trang giới thiệu, đặt hàng, gửi ticket) ----
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
+app.use("/api/customer", require("./routes/customerRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/tickets", require("./routes/ticketRoutes"));
 
 // ---- Công khai (không cần đăng nhập) ----
 app.use("/api/public", require("./routes/publicSiteRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
+app.use("/api/payments", require("./routes/paymentRoutes")); // webhook SePay
 
 // ---- Super Admin ----
 app.use("/api/super-admin", require("./routes/superAdminRoutes"));

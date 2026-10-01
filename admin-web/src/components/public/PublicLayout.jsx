@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { motion, useScroll, useSpring } from "framer-motion";
 import PublicNavbar from "./PublicNavbar";
 import PublicFooter from "./PublicFooter";
+import MobileBottomNav from "./MobileBottomNav";
 
 export default function PublicLayout() {
   const { pathname } = useLocation();
@@ -27,6 +28,7 @@ export default function PublicLayout() {
         <Outlet />
       </motion.main>
       <PublicFooter />
+      <MobileBottomNav />
     </div>
   );
 }

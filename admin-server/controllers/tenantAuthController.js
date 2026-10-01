@@ -8,6 +8,8 @@ const sendEmail = require("../utils/sendEmail");
 // qua ?token= khi cần vào Dashboard thật, xem authHandoff trong tài liệu tích hợp gửi kèm cho Client Web).
 //
 // @route POST /api/auth/register
+const { notifySuperAdmins } = require("../utils/notify");
+
 const registerTenant = async (req, res) => {
   try {
     const { name, email, password, plan } = req.body;
@@ -33,6 +35,13 @@ const registerTenant = async (req, res) => {
       subject: "Xác thực email — O2O Brand Promotion",
       html: `<p>Chào ${admin.name},</p><p>Bấm vào liên kết để xác thực email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>Liên kết có hiệu lực 24 giờ.</p>`,
     }).catch((err) => console.error("Gửi email xác thực thất bại:", err.message));
+
+    notifySuperAdmins({
+      type: "signup",
+      title: "Khách mới đăng ký",
+      body: `${admin.name} (${admin.email})`,
+      link: `/super-admin/tenants?q=${encodeURIComponent(admin.email)}`,
+    });
 
     res.status(201).json({
       _id: admin._id,
@@ -98,4 +107,25 @@ const resendTenantVerification = async (req, res) => {
   res.json({ message: "Đã gửi lại email xác thực" });
 };
 
-module.exports = { registerTenant, loginTenant, getTenantMe, verifyTenantEmail, resendTenantVerification };
+// @route PUT /api/auth/password   { currentPassword, newPassword }
+const changeTenantPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới" });
+    }
+    if (newPassword.length < 6) return res.status(400).json({ message: "Mật khẩu mới cần tối thiểu 6 ký tự" });
+    // req.admin đã bị select("-password") ở middleware → lấy lại bản đầy đủ để so khớp mật khẩu.
+    const admin = await Admin.findById(req.admin._id);
+    if (!(await admin.matchPassword(currentPassword))) {
+      return res.status(401).json({ message: "Mật khẩu hiện tại không đúng" });
+    }
+    admin.password = newPassword; // hook pre("save") tự băm
+    await admin.save();
+    res.json({ message: "Đã đổi mật khẩu" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi máy chủ khi đổi mật khẩu", error: err.message });
+  }
+};
+
+module.exports = { registerTenant, loginTenant, getTenantMe, verifyTenantEmail, resendTenantVerification, changeTenantPassword };

@@ -18,6 +18,7 @@ const { listAllOrders, updateOrderStatus, confirmManualPayment } = require("../c
 const { listAllTickets, replyAsSuperAdmin, updateTicketStatus } = require("../controllers/ticketController");
 const { getAllCmsForAdmin, upsertCmsSection } = require("../controllers/cmsController");
 const { getSettings, updateSettings, updateSuperAdminCredentials } = require("../controllers/settingsController");
+const { superAdminNotifications: notif } = require("../controllers/notificationController");
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -47,6 +48,10 @@ router.get("/hardware", listAllHardware);
 router.post("/hardware", createHardware);
 router.put("/hardware/:id", updateHardware);
 router.delete("/hardware/:id", deleteHardware);
+
+router.get("/notifications", notif.list);
+router.put("/notifications/read-all", notif.markAllRead);
+router.put("/notifications/:id/read", notif.markRead);
 
 router.get("/orders", listAllOrders);
 router.put("/orders/:id/status", updateOrderStatus);

@@ -49,8 +49,22 @@ export const AuthProvider = ({ children }) => {
     setAdmin(null);
   };
 
+  // Cập nhật thông tin hiển thị (vd đổi tên ở trang Tài khoản) mà không cần đăng nhập lại.
+  const updateAdmin = (patch) => setAdmin((a) => (a ? { ...a, ...patch } : a));
+
+  // Socket mất kết nối rồi nối lại thì server quên phòng riêng của khách → gửi lại token để vẫn nhận được cập nhật đơn hàng.
+  useEffect(() => {
+    if (!admin?._id) return;
+    const rejoin = () => {
+      const token = localStorage.getItem("o2o_token");
+      if (token) socket.emit("auth:tenant", token);
+    };
+    socket.on("connect", rejoin);
+    return () => socket.off("connect", rejoin);
+  }, [admin?._id]);
+
   return (
-    <AuthContext.Provider value={{ admin, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ admin, loading, login, register, logout, updateAdmin }}>
       {children}
     </AuthContext.Provider>
   );

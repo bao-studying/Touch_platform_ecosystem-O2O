@@ -1,4 +1,5 @@
 const ContactSubmission = require("../models/ContactSubmission");
+const { notifySuperAdmins } = require("../utils/notify");
 
 // @desc  Nhận submit Form Liên hệ công khai — chỉ lưu lại thành 1 lượt liên hệ.
 //        Đăng nhập Super Admin nay đi qua trang /login (đăng nhập thường) hoặc /super-admin/login,
@@ -12,6 +13,7 @@ const submitContact = async (req, res) => {
     }
 
     await ContactSubmission.create({ name, email, phone, message });
+    notifySuperAdmins({ type: "contact", title: "Liên hệ mới từ trang giới thiệu", body: `${name}: ${String(message).slice(0, 90)}` });
     res.status(201).json({ message: "Cảm ơn bạn đã liên hệ, chúng tôi sẽ phản hồi sớm nhất!" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi máy chủ", error: err.message });

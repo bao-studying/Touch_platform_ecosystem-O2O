@@ -6,6 +6,7 @@ const {
   getTenantMe,
   verifyTenantEmail,
   resendTenantVerification,
+  changeTenantPassword,
 } = require("../controllers/tenantAuthController");
 const { protectTenant } = require("../middleware/tenantAuth");
 
@@ -16,5 +17,6 @@ router.post("/login", loginTenant);
 router.get("/me", protectTenant, getTenantMe);
 router.get("/verify-email/:token", verifyTenantEmail);
 router.post("/resend-verification", protectTenant, resendTenantVerification);
+router.put("/password", protectTenant, changeTenantPassword);
 
 module.exports = router;

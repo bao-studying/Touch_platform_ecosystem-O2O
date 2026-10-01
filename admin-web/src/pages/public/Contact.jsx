@@ -1,6 +1,27 @@
 import { useEffect, useState } from "react";
-import { Mail, Phone, MessageCircle } from "lucide-react";
+import { Clock, Handshake, Mail, MessageCircle, Phone } from "lucide-react";
+import { SiFacebook, SiInstagram, SiTiktok, SiYoutube } from "react-icons/si";
 import api from "../../api/axios";
+import { CONTACT_INFO } from "../../lib/contactInfo";
+
+const SOCIAL_ICONS = { facebook: SiFacebook, instagram: SiInstagram, tiktok: SiTiktok, youtube: SiYoutube };
+
+// 1 dòng thông tin liên hệ: biểu tượng + nhãn nhỏ + nội dung (có thể là liên kết).
+function InfoRow({ icon: Icon, label, children }) {
+  return (
+    <div className="flex items-start gap-3.5">
+      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clay-500/10 text-clay-500">
+        <Icon size={18} />
+      </span>
+      <div className="min-w-0">
+        <div className="text-xs font-medium uppercase tracking-wide text-espresso-600">{label}</div>
+        <div className="mt-0.5 text-sm text-espresso-900">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+const linkClass = "font-medium underline decoration-clay-500/40 underline-offset-4 transition-colors hover:decoration-clay-500";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
@@ -34,23 +55,71 @@ export default function Contact() {
           Có câu hỏi về sản phẩm, giá, hoặc muốn được tư vấn triển khai? Gửi thông tin bên cạnh, đội ngũ O2O sẽ phản hồi sớm nhất.
         </p>
 
-        <div className="mt-8 space-y-4">
-          <div className="flex items-center gap-3 text-espresso-700">
-            <Mail size={18} className="text-clay-500" />
-            <span className="text-sm">Phản hồi trong vòng 24 giờ làm việc</span>
-          </div>
-          {support.supportHotline && (
-            <div className="flex items-center gap-3 text-espresso-700">
-              <Phone size={18} className="text-clay-500" />
-              <span className="text-sm">{support.supportHotline}</span>
-            </div>
-          )}
-          {support.supportZalo && (
-            <div className="flex items-center gap-3 text-espresso-700">
-              <MessageCircle size={18} className="text-clay-500" />
-              <span className="text-sm">Zalo: {support.supportZalo}</span>
-            </div>
-          )}
+        <div className="mt-8 space-y-6">
+          <InfoRow icon={Mail} label="Email hỗ trợ">
+            <a href={`mailto:${CONTACT_INFO.supportEmail}`} className={linkClass}>
+              {CONTACT_INFO.supportEmail}
+            </a>
+            <p className="mt-0.5 text-xs text-espresso-600">{CONTACT_INFO.responseTime}</p>
+          </InfoRow>
+
+          <InfoRow icon={Handshake} label="Kinh doanh & hợp tác">
+            <a href={`mailto:${CONTACT_INFO.salesEmail}`} className={linkClass}>
+              {CONTACT_INFO.salesEmail}
+            </a>
+            <span className="mt-0.5 block">
+              <a href={`mailto:${CONTACT_INFO.partnerEmail}`} className={linkClass}>
+                {CONTACT_INFO.partnerEmail}
+              </a>
+              <span className="text-xs text-espresso-600"> — đại lý, đối tác triển khai</span>
+            </span>
+          </InfoRow>
+
+          <InfoRow icon={Phone} label="Hotline">
+            <a href={`tel:${(support.supportHotline || CONTACT_INFO.hotline).replace(/\s/g, "")}`} className={linkClass}>
+              {support.supportHotline || CONTACT_INFO.hotline}
+            </a>
+          </InfoRow>
+
+          <InfoRow icon={MessageCircle} label="Zalo">
+            {support.supportZalo || CONTACT_INFO.zalo}
+          </InfoRow>
+
+          <InfoRow icon={Clock} label="Giờ làm việc">
+            <ul className="space-y-0.5">
+              {CONTACT_INFO.workingHours.map((h) => (
+                <li key={h.days} className="grid grid-cols-[10.5rem_auto] gap-x-4">
+                  <span className="text-espresso-700">{h.days}</span>
+                  <span className="font-medium">{h.time}</span>
+                </li>
+              ))}
+            </ul>
+          </InfoRow>
+        </div>
+
+        <div className="mt-9">
+          <div className="text-xs font-medium uppercase tracking-wide text-espresso-600">Theo dõi chúng tôi</div>
+          <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {CONTACT_INFO.socials.map((soc) => {
+              const Icon = SOCIAL_ICONS[soc.key];
+              return (
+                <li key={soc.key}>
+                  <a
+                    href={soc.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-cream-200 transition-all hover:-translate-y-0.5 hover:ring-clay-500/40 hover:shadow-[0_14px_28px_-18px_rgba(59,35,24,0.5)]"
+                  >
+                    <Icon size={18} className="text-espresso-700 transition-colors group-hover:text-clay-500" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-espresso-950">{soc.label}</span>
+                      <span className="block truncate text-xs text-espresso-600">{soc.handle}</span>
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
 

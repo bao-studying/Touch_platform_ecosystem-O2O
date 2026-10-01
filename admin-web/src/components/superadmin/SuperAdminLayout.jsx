@@ -15,13 +15,10 @@ import {
   X,
   ExternalLink,
   Search,
-  Bell,
   ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { useSuperAdminAuth } from "../../context/SuperAdminAuthContext";
-import superAdminApi from "../../api/superAdminAxios";
-import { ACTIVITY_META, timeAgo } from "../../lib/superadminFormat";
+import NotificationBell from "../common/NotificationBell";
 import { ToastProvider } from "./Toast";
 
 const NAV_ITEMS = [
@@ -54,11 +51,8 @@ function SuperAdminShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [activity, setActivity] = useState([]);
   const searchRef = useRef(null);
-  const notifRef = useRef(null);
   const profileRef = useRef(null);
 
   const handleLogout = () => {
@@ -74,7 +68,6 @@ function SuperAdminShell() {
         setTimeout(() => searchRef.current?.focus(), 0);
       }
       if (e.key === "Escape") {
-        setNotifOpen(false);
         setProfileOpen(false);
         setSearchOpen(false);
       }
@@ -85,18 +78,10 @@ function SuperAdminShell() {
 
   useEffect(() => {
     const onClick = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
-  }, []);
-
-  useEffect(() => {
-    superAdminApi
-      .get("/super-admin/overview")
-      .then((res) => setActivity(res.data.recentActivity || []))
-      .catch(() => {});
   }, []);
 
   const submitSearch = (e) => {
@@ -153,7 +138,7 @@ function SuperAdminShell() {
                     onChange={(e) => setSearch(e.target.value)}
                     onBlur={() => !search && setSearchOpen(false)}
                     placeholder="Tìm khách thuê..."
-                    className="w-40 sm:w-56 bg-white/10 rounded-full px-4 py-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="w-28 sm:w-56 bg-white/10 rounded-full px-4 py-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-white/20"
                   />
                 </form>
               ) : (
@@ -170,59 +155,8 @@ function SuperAdminShell() {
               )}
             </div>
 
-            <div className="relative hidden sm:block" ref={notifRef}>
-              <button
-                onClick={() => setNotifOpen((v) => !v)}
-                className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-                aria-label="Thông báo"
-              >
-                <Bell size={16} />
-                {activity.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-orange-500" />
-                )}
-              </button>
-              <AnimatePresence>
-                {notifOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-3 w-80 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-40"
-                  >
-                    <div className="px-4 py-3 border-b border-white/5 font-medium text-sm">Hoạt động gần đây</div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {activity.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-sm text-neutral-500">Chưa có hoạt động nào</div>
-                      ) : (
-                        activity.slice(0, 6).map((a, i) => {
-                          const meta = ACTIVITY_META[a.type] || ACTIVITY_META.signup;
-                          const Icon = meta.icon;
-                          return (
-                            <div key={i} className="flex items-start gap-3 px-4 py-3 hover:bg-white/5">
-                              <span className={`w-8 h-8 rounded-full ${meta.darkBg} ${meta.darkTone} flex items-center justify-center shrink-0`}>
-                                <Icon size={14} />
-                              </span>
-                              <div className="min-w-0">
-                                <p className="text-sm text-neutral-300 leading-snug">{a.text}</p>
-                                <p className="text-xs text-neutral-500 mt-0.5">{timeAgo(a.at)}</p>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                    <NavLink
-                      to="/super-admin/dashboard"
-                      onClick={() => setNotifOpen(false)}
-                      className="flex items-center justify-center gap-1 px-4 py-2.5 text-xs font-medium text-orange-400 hover:bg-white/5 border-t border-white/5"
-                    >
-                      Xem trên Tổng quan <ChevronRight size={13} />
-                    </NavLink>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* Chuông thông báo có bộ đếm — hiện ở cả mobile lẫn desktop */}
+            <NotificationBell scope="superadmin" variant="dark" />
 
             <div className="relative" ref={profileRef}>
               <button
